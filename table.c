@@ -11,14 +11,14 @@ table_t *tbl_init() {
 }
 
 connection_t *tbl_get(table_t *ct, __u8 client, __u8 server) {
-	int index = ct_hash(ct_gen_key(client, server));
+	int index = tbl_hash(tbl_gen_key(client, server));
 	list_t *list = ct->map[index];
 
 	return lst_find_con(list, client, server);
 }
 
 int tbl_put(table_t *ct, connection_t *c) {
-	int index = fh_hash(ct_gen_key(c->client, c->server));
+	int index = tbl_hash(tbl_gen_key(c->client, c->server));
 
 	if (ct->curr_size <= MAX_CONNECTIONS) {
 		if (ct->map[index] == NULL) ct->map[index] = lst_init();

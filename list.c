@@ -3,8 +3,8 @@
 list_t *lst_init() {
 	list_t *list = (list_t *)malloc(sizeof(list_t));
 
-	list->head = list_create(NULL);
-	list->tail = list_create(NULL);
+	list->head = lst_create(NULL);
+	list->tail = lst_create(NULL);
 
 	list->head->next = list->tail;
 	list->tail->prev = list->head;
@@ -31,7 +31,7 @@ void lst_add(list_t *list, item_t *item) {
 
 void lst_clear(item_t *head) {
 	if (head != NULL) {
-		list_clear(head->next);
+		lst_clear(head->next);
 		free(head->data);
 		free(head);
 	}

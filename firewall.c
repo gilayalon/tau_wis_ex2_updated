@@ -117,22 +117,22 @@ int fw_inspect(char *packet) {
 	cmd_t cmd;
 	__u8 client, server, seq;
 
-	chunks[0] = trim(strtok(packet, " \t\v\f\r"));
+	chunks[0] = *(trim(strtok(packet, " \t\v\f\r")));
 	for (i = 1; i < 8; i++) {
-		chunks[i] = trim(strtok(NULL, " \t\v\f\r"));
+		chunks[i] = *(trim(strtok(NULL, " \t\v\f\r")));
 	}
 
-	client = strToInt(chunks[1]);
-	server = strToInt(chunks[3]);
+	client = strToInt(&chunks[1]);
+	server = strToInt(&chunks[3]);
 
 	if (fw_check_id(client, server) || client == server){
 		return REASON_DISALLOWED_ID;
 	} else {
-		cmd = fw_check_cmd(chunks[7]);
+		cmd = fw_check_cmd(&chunks[7]);
 		if (cmd == CMD_BAD) {
 			return REASON_BAD_COMMAND;
 		} else {
-			seq = strToInt(chunks[5]);
+			seq = strToInt(&chunks[5]);
 			return fw_check_con(client, server, seq, cmd);
 		}
 	}

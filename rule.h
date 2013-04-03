@@ -13,7 +13,7 @@ typedef struct {
 	__u8 padding[3];
 } rule_t;
 
-__u8 *unpack(__u64 p, int k);
-rule_t *lst_new_rule(__u64 segment);
+__u8 unpack(__u64 p, int k);
+item_t *lst_new_rule(__u64 segment);
 
 #endif

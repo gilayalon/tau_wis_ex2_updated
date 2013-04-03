@@ -6,10 +6,10 @@
 #include <string.h>
 #include <linux/types.h>
 
-typedef struct {
+typedef struct item_t {
 	void *data;
-	item_t *prev;
-	item_t *next;
+	struct item_t *prev;
+	struct item_t *next;
 } item_t;
 
 typedef struct {
