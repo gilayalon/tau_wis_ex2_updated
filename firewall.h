@@ -15,12 +15,12 @@ extern const char *FW_CMDS[];
 
 typedef enum {
 	CMD_CLIENT_HELLO = 0,
-	CMD_SERVER_HELLO,
-	CMD_CLIENT_SUPER,
-	CMD_SERVER_MARKET,
-	CMD_CLIENT_BYE,
-	CMD_SERVER_BYE,
-	CMD_BAD
+			CMD_SERVER_HELLO,
+			CMD_CLIENT_SUPER,
+			CMD_SERVER_MARKET,
+			CMD_CLIENT_BYE,
+			CMD_SERVER_BYE,
+			CMD_BAD
 } cmd_t;
 
 #define VERDICT_ACCEPT 'A'
@@ -28,11 +28,11 @@ typedef enum {
 
 typedef enum {
 	REASON_DISALLOWED_ID = 0,
-	REASON_OUT_OF_CONNECTION,
-	REASON_OUT_OF_STATE,
-	REASON_BAD_SEQUENCE_NUM,
-	REASON_BAD_COMMAND,
-	REASON_PACKET_OK
+			REASON_OUT_OF_CONNECTION,
+			REASON_OUT_OF_STATE,
+			REASON_BAD_SEQUENCE_NUM,
+			REASON_BAD_COMMAND,
+			REASON_PACKET_OK
 } reason_t;
 
 extern const char *FW_REASONS[];
@@ -40,11 +40,14 @@ extern const char *FW_REASONS[];
 list_t *rules;
 table_t *connections;
 
+char *output[3];
+int reason;
+
 int fw_init(char *filename);
-int fw_check_id(__u8 client, __u8 server);
+int fw_check_id(int client, int server);
 int fw_check_cmd(char *val);
-int fw_check_con(__u8 client, __u8 server, __u8 seq, cmd_t cmd);
-int fw_inspect(char *packet);
+int fw_check_con(int client, int server, int seq, cmd_t cmd);
+void fw_inspect(char *packet);
 int fw_shutdown();
 
 #endif

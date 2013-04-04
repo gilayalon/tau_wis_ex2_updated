@@ -1,4 +1,3 @@
-#include "shell.h"
 #include "firewall.h"
 #include <stdio.h>
 
@@ -11,13 +10,20 @@ int main(int argc, char **argv) {
 	fw_init(argv[1]);
 
 	while (go == 1) {
-		char command[MAXLENGTH] = { 0 };
 
+		char command[MAXLENGTH] = { 0 };
+		i = 0;
 		while ((c = getchar()) != '\n') {
 			command[i] = c;
 			i++;
 		}
-		fw_inspect(command);
+		if (strcmp(command, "exit") == 0) { /* to end the program neatly */
+			go = 0;
+		} else {
+			fw_inspect(command);
+			printf("From %s To %s Verdict %s Reason %s\n",output[0], output[1], output[2], FW_REASONS[reason]);
+		}
 	}
+	fw_shutdown();
 	return 0;
 }

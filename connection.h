@@ -5,12 +5,12 @@
 
 typedef enum {
 	STATE_INIT = 0,
-	STATE_IDLE,
-	STATE_SUPER,
-	STATE_CLIENT_BYE,
-	STATE_SERVER_BYE,
-	STATE_END,
-	STATE_BAD
+			STATE_IDLE,
+			STATE_SUPER,
+			STATE_CLIENT_BYE,
+			STATE_SERVER_BYE,
+			STATE_END,
+			STATE_BAD
 } state_t;
 
 typedef struct {

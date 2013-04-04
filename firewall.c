@@ -1,28 +1,24 @@
 #include "firewall.h"
 
 int fw_init(char *filename) {
-	int i, j;
+	int i;
 	int fdin;
 	char *src;
-	__u64 segment;
 	struct stat statbuf;
-	char bytes[SEGMENT_SIZE];
+	unsigned char bytes[SEGMENT_SIZE];
 
 	rules = lst_init();
+	i = lst_is_empty(rules);
 	connections = tbl_init();
 
 	fdin = open(filename, O_RDONLY);
 	fstat(fdin, &statbuf);
-
 	src = mmap(0, statbuf.st_size, PROT_READ, MAP_SHARED, fdin, 0);
+
 	for (i = 0; i < statbuf.st_size; i+=SEGMENT_SIZE) {
-		memcpy(bytes, src, SEGMENT_SIZE);
-
-		for (j = 0; j < SEGMENT_SIZE; j++) {
-			segment |= (int)bytes[j] << (j * SEGMENT_SIZE);
-		}
-
-		lst_add(rules, lst_new_rule(segment));
+		memcpy(bytes, &src[i], SEGMENT_SIZE);
+		if (bytes[4] != 0)
+			lst_add(rules, lst_new_rule(bytes));
 	}
 
 	close(fdin);
@@ -30,17 +26,16 @@ int fw_init(char *filename) {
 	return 0;
 }
 
-int fw_check_id(__u8 client, __u8 server) {
+int fw_check_id(int client, int server) {
 	item_t *head;
 	rule_t *data;
 
-	if (client < 0 || client > 255 || server < 0 || server > 255)
+	if (client < 0 || client > 255 || server < 0 || server > 255 || client == server)
 		return 1;
 
 	if (!lst_is_empty(rules)) {
 		head = rules->head->next;
 		data = (rule_t *)head->data;
-
 		for ( ; head != rules->tail; head = head->next) {
 			if (client >= data->client_min_id && client <= data->client_max_id
 					&& server >= data->server_min_id && server <= data->server_max_id) {
@@ -67,73 +62,105 @@ int fw_check_cmd(char *cmd) {
 	return CMD_BAD;
 }
 
-int fw_check_con(__u8 client, __u8 server, __u8 seq, cmd_t cmd) {
+int fw_check_con(int client, int server, int seq, cmd_t cmd) {
 	connection_t *c = tbl_get(connections, client, server);
 	connection_t *_c = tbl_get(connections, server, client);
+	output[2] = "D";
 
-	if (c == NULL) {
-		if (cmd == CMD_CLIENT_HELLO) {
-			if (_c != NULL && c->state == STATE_END) {
-				return REASON_OUT_OF_CONNECTION;
-			} else {
-				if (seq == -1 || seq < 0 || seq > 255) {
-					return REASON_BAD_SEQUENCE_NUM;
-				} else {
-					if (tbl_put(connections, lst_new_con(client, server, seq))) {
-						return REASON_OUT_OF_CONNECTION;
-					} else {
-						return REASON_PACKET_OK;
-					}
-				}
-			}
-		} else {
-			return REASON_OUT_OF_CONNECTION;
-		}
-	} else {
-		if ((c->state == STATE_INIT && cmd != CMD_SERVER_HELLO) ||
-				(c->state == STATE_IDLE && cmd != CMD_CLIENT_SUPER) ||
-				(c->state == STATE_SUPER && cmd != CMD_SERVER_MARKET) ||
-				(c->state == STATE_CLIENT_BYE && cmd != CMD_SERVER_BYE) ||
-				(c->state == STATE_SERVER_BYE && cmd != CMD_CLIENT_BYE) ||
-				(c->state == STATE_END || c->state == STATE_BAD)) {
-			return REASON_OUT_OF_STATE;
-		}
+	if ((c == NULL && _c == NULL && cmd != CMD_CLIENT_HELLO) || /* אין קשר ולא מתחילים בהלו */
+			(c != NULL && (cmd == CMD_SERVER_HELLO || cmd == CMD_SERVER_MARKET || cmd == CMD_SERVER_BYE)) || /* יש קשר בו אני הקליינט ועכשיו יש פקטה בה אני הסרבר */
+			(_c != NULL && (cmd == CMD_CLIENT_HELLO || cmd == CMD_CLIENT_SUPER || cmd == CMD_CLIENT_BYE))) { /* יש קשר בו אני הסרבר ועכשיו יש פקטה בה אני הקליינט */
+		return REASON_OUT_OF_CONNECTION; /* הפקטה לא חלק מקשר קיים */
 
-		if (seq != ((c->seq + 1) % 256)) {
+	} else if (c == NULL && cmd == CMD_CLIENT_HELLO) { /* לא היה קשר ביניהם ועכשיו מתחילים */
+		if (seq < 0 || seq > 255) {
 			return REASON_BAD_SEQUENCE_NUM;
 		} else {
+			if (tbl_put(connections, lst_new_con(client, server, seq))) { /* יש כבר 120 שיחות בטבלה */
+				printf("here2\n");
+				return REASON_OUT_OF_CONNECTION;
+			} else {
+				output[2] = "A";
+				return REASON_PACKET_OK;
+			}
+		}
+	} else {
+		if (c != NULL) {
+			if ((c->state == STATE_IDLE && cmd != CMD_CLIENT_SUPER && cmd != CMD_CLIENT_BYE) ||
+					(c->state == STATE_SERVER_BYE && cmd != CMD_CLIENT_BYE) ||
+					(c->state == STATE_END || c->state == STATE_BAD)) {
+				return REASON_OUT_OF_STATE;
+			}
+			if (seq != ((c->seq + 1) % 256)) {
+				return REASON_BAD_SEQUENCE_NUM;
+			}
 			c->seq = (c->seq + 1) % 256;
-			c->state++;
-
+			if (c->state == STATE_IDLE && cmd == CMD_CLIENT_BYE)
+				c->state += 2;
+			c->state += 1;
+			output[2] = "A";
+			return REASON_PACKET_OK;
+		} else if (_c != NULL) {
+			if ((_c->state == STATE_INIT && cmd != CMD_SERVER_HELLO) ||
+					(_c->state == STATE_IDLE && cmd != CMD_SERVER_BYE) ||
+					(_c->state == STATE_SUPER && cmd != CMD_SERVER_MARKET) ||
+					(_c->state == STATE_CLIENT_BYE && cmd != CMD_SERVER_BYE) ||
+					(_c->state == STATE_END || _c->state == STATE_BAD)) {
+				printf("_c->state = %d, cmd = %d\n", _c->state, cmd);
+				return REASON_OUT_OF_STATE;
+			}
+			if (seq != ((_c->seq + 1) % 256)) {
+				return REASON_BAD_SEQUENCE_NUM;
+			}
+			_c->seq = (_c->seq + 1) % 256;
+			if (_c->state == STATE_IDLE && cmd == CMD_SERVER_BYE)
+				_c->state += 3;
+			_c->state += 1;
+			output[2] = "A";
 			return REASON_PACKET_OK;
 		}
+
 	}
+	return REASON_PACKET_OK;
 }
 
-int fw_inspect(char *packet) {
+void fw_inspect(char *packet) {
 	int i;
-	char chunks[8];
+	char *chunks[8];
 
 	cmd_t cmd;
 	__u8 client, server, seq;
 
-	chunks[0] = *(trim(strtok(packet, " \t\v\f\r")));
+	chunks[0] = (trim(strtok(packet, " \t\v\f\r")));
 	for (i = 1; i < 8; i++) {
-		chunks[i] = *(trim(strtok(NULL, " \t\v\f\r")));
+		chunks[i] = (trim(strtok(NULL, " \t\v\f\r")));
 	}
 
-	client = strToInt(&chunks[1]);
-	server = strToInt(&chunks[3]);
+	output[0] = chunks[1];
+	output[1] = chunks[3];
 
-	if (fw_check_id(client, server) || client == server){
-		return REASON_DISALLOWED_ID;
+	client = strToInt(chunks[1]);
+	server = strToInt(chunks[3]);
+
+	if (fw_check_id(client, server)){
+		output[2] = "D";
+		reason = REASON_DISALLOWED_ID;
 	} else {
-		cmd = fw_check_cmd(&chunks[7]);
+		cmd = fw_check_cmd(chunks[7]);
 		if (cmd == CMD_BAD) {
-			return REASON_BAD_COMMAND;
+			output[2] = "D";
+			reason = REASON_BAD_COMMAND;
 		} else {
-			seq = strToInt(&chunks[5]);
-			return fw_check_con(client, server, seq, cmd);
+			seq = strToInt(chunks[5]);
+			reason = fw_check_con(client, server, seq, cmd);
 		}
 	}
+}
+
+int fw_shutdown() {
+	lst_clear(rules->head);
+	free(rules);
+	tbl_clear(connections);
+	free(connections);
+	return 0;
 }

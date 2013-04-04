@@ -16,7 +16,6 @@ table_t *tbl_init();
 connection_t *tbl_get(table_t *ct, __u8 client, __u8 server);
 int tbl_put(table_t *ct, connection_t *c);
 void tbl_clear(table_t *ct);
-char *tbl_gen_key(__u8 client, __u8 server);
-int tbl_hash(char *key);
+int tbl_hash(__u8 client, __u8 server);
 
 #endif

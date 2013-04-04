@@ -64,7 +64,7 @@ char *rtrim(char *str)
 char *trim(char *str)
 {
 	rtrim(str);
-    ltrim(str);
+	ltrim(str);
 
-    return str;
+	return str;
 }

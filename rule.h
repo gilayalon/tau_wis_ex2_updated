@@ -14,6 +14,6 @@ typedef struct {
 } rule_t;
 
 __u8 unpack(__u64 p, int k);
-item_t *lst_new_rule(__u64 segment);
+item_t *lst_new_rule(unsigned char *bytes);
 
 #endif

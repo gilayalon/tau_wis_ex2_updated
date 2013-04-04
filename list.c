@@ -38,5 +38,8 @@ void lst_clear(item_t *head) {
 }
 
 int lst_is_empty(list_t *list) {
-	return (list->head->next == list->tail);
+	int result = 0;
+	if (list->head->next == NULL)
+		result = 1;
+	return result;
 }
