@@ -1,4 +1,4 @@
-#include "firewall.h"
+#include "fw_func.h"
 #include <stdio.h>
 
 #define MAXLENGTH 1024
@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
 			go = 0;
 		} else {
 			fw_inspect(command);
-			printf("From %s To %s Verdict %s Reason %s\n",output[0], output[1], output[2], FW_REASONS[reason]);
+			printf("From %s To %s Verdict %s Reason %s\n",output[0], output[1], output[2], REASONS[reason]);
 		}
 	}
 	fw_shutdown();
